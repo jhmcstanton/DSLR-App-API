@@ -35,7 +35,7 @@ emptyNotes :: IO (TVar [Note])
 emptyNotes =
     newTVarIO []
 
-emptyKeyframes = IO (TVar [[Keyframe]])
+emptyKeyframes :: IO (TVar [[Keyframe]])
 emptyKeyframes = newTVarIO []
 
 getNotes :: MonadIO m => TVar [Note] -> m [Note]
@@ -56,7 +56,7 @@ getKeyframeLists :: MonadIO m => TVar [[Keyframe]] -> m [[Keyframe]]
 getKeyframeLists frames =
   liftIO $ readTVarIO frames
 
-postKeyframeList MonadIO m => TVar [[Keyframe]] -> [Keyframe] -> m [[Keyframe]]
+postKeyframeList :: MonadIO m => TVar [[Keyframe]] -> [Keyframe] -> m [[Keyframe]]
 postKeyframeList frames newFrames =
   liftIO $ do
     atomically $ do
@@ -66,29 +66,27 @@ postKeyframeList frames newFrames =
       return newFrameList
 
 type NoteAPI =
-         Get Text
-    :<|> "notes" :> Get [Note]
-    :<|> "notes" :> ReqBody Note :> Post [Note]
+         "notes" :> Get '[JSON] [Note]
+    :<|> "notes" :> ReqBody '[Note] :> Post '[JSON] [Note]
 
 type KeyframeAPI =
-  Get Text
-  :<|> "keyframes" :> Get [[Keyframe]]
-  :<|> "keyframes" :> ReqBody [Keyframe] :> Post [[Keyframe]]
+       "keyframes" :> Get '[JSON] [[Keyframe]]
+  :<|> "keyframes" :> ReqBody '[ [Keyframe] ]:> Post '[JSON] [[Keyframe]]
 
---noteAPI :: Proxy NoteAPI
---noteAPI =
---    Proxy
+noteAPI :: Proxy NoteAPI
+noteAPI =
+    Proxy
 
 serverAPI :: Proxy (NoteAPI :<|> KeyframeAPI)
 serverAPI = Proxy
 
-server :: Text -> TVar [Note] -> TVar [[Keyframe]] -> Server (NoteAPI :<|> KeyframeAPI) --NoteAPI
+server :: Text -> TVar [Note] -> TVar [[Keyframe]] -> Server NoteAPI --(NoteAPI :<|> KeyframeAPI) --NoteAPI
 server home notes keyframes =
          return home
     :<|> getNotes notes
     :<|> postNote notes
-    :<|> getKeyframeLists keyframes
-    :<|> postKeyframeList keyframes
+--    :<|> getKeyframeLists keyframes
+  --  :<|> postKeyframeList keyframes
 
 
 main :: IO ()
