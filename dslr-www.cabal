@@ -19,4 +19,6 @@ executable dslr-www
                       stm,
                       text,
                       transformers,
-                      warp
+                      warp,
+                      mtl
+  hs-source-dirs:     src
