@@ -10,7 +10,8 @@ executable dslr-www
                       DeriveGeneric,
                       OverloadedStrings,
                       TypeFamilies,
-                      TypeOperators
+                      TypeOperators,
+                      TemplateHaskell
   ghc-options:        -O2 -Wall -threaded
   build-depends:      base,
                       aeson,
@@ -20,5 +21,10 @@ executable dslr-www
                       text,
                       transformers,
                       warp,
-                      mtl
+                      mtl,
+                      persistent,
+                      persistent-postgresql,
+                      persistent-template,
+                      heroku,
+                      resourcet
   hs-source-dirs:     src

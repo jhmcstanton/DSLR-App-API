@@ -1,16 +1,20 @@
-import Control.Concurrent.STM
-import Control.Monad.IO.Class
-import Data.Text
-import Network.Wai.Handler.Warp
-import Servant
-import System.Environment
-import System.IO
+import           Control.Concurrent.STM
+import           Control.Monad.IO.Class
+import           Data.Text
+import           Network.Wai.Handler.Warp
+import           Servant
+import           System.Environment
+import           System.IO
+import           Database.Persist.Postgresql
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-import DslrWWW.Types
-import DslrWWW.API
+import           DslrWWW.Types
+import           DslrWWW.API
+import           DslrWWW.Database
+import           DslrWWW.Database.Models
+import           DslrWWW.Database.Marshal
 
 type ServerAPI = Get '[PlainText] Text :<|> KeyframeAPI
 
@@ -33,4 +37,5 @@ main = do
         home = maybe "Welcome to Haskell on Heroku" T.pack $
                  lookup "TUTORIAL_HOME" env
     emptyKeyframes <- newTVarIO []
+    runDB $ runMigration migrateAll
     run port $ serve serverAPI $ server emptyKeyframes home
