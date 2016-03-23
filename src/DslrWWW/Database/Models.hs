@@ -9,6 +9,7 @@ import           DslrWWW.Types
 
 import           Database.Persist.TH
 import           Data.Text (Text)
+import           Data.ByteString
 
 
 -- newtypes for marshaling to the database, unfortunate but necessary
@@ -17,7 +18,10 @@ UserEntry
   t_firstName Text
   t_lastName  Text
   t_username  Text
+  UniqueUsername t_username
   t_email     Text
+  UniqueEmail t_email
+  t_pwHash    ByteString
   deriving Show
 KeyframeListEntry
   t_user     UserEntryId

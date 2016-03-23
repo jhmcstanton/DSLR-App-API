@@ -5,7 +5,7 @@ import           DslrWWW.Types
 
 
 entryToUser :: UserEntry -> User
-entryToUser (UserEntry t_first t_last t_email t_username) =
+entryToUser (UserEntry t_first t_last t_email t_username _) =
   User { firstName = t_first,
          lastName  = t_last,
          email     = Email t_email,

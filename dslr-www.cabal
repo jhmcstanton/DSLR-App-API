@@ -12,20 +12,23 @@ executable dslr-www
                       TypeFamilies,
                       TypeOperators,
                       TemplateHaskell
-  ghc-options:        -O2 -Wall -threaded
+  ghc-options:        -O2 -Wall -threaded -fwarn-typed-holes                      
   build-depends:      base,
                       aeson,
                       servant,
                       servant-server,
                       stm,
                       text,
+                      bytestring,
                       transformers,
                       warp,
                       mtl,
                       persistent,
                       persistent-postgresql,
                       persistent-template,
+                      esqueleto,
                       heroku,
                       resourcet,
-                      monad-logger
+                      monad-logger,
+                      pwstore-fast
   hs-source-dirs:     src

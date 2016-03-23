@@ -4,7 +4,8 @@ module DslrWWW.Types
     KeyframeList(..),
     Username(..),
     Email(..),
-    User(..)
+    User(..),
+    Password(..)
   ) where
 
 import           GHC.Generics
@@ -33,6 +34,11 @@ newtype Username = Username T.Text deriving (Generic)
 
 instance FromJSON Username
 instance ToJSON   Username
+
+newtype Password = Password T.Text deriving (Generic)
+
+instance FromJSON Password
+instance ToJSON   Password
 
 newtype Email    = Email    T.Text deriving (Generic)
 
