@@ -9,12 +9,15 @@ import           Web.Heroku.Postgres
 import           Data.Monoid
 import           Data.Text.Encoding (encodeUtf8)
 import           Control.Monad.Trans.Resource (ResourceT, runResourceT)
+import           Control.Monad.Logger (runStdoutLoggingT, LoggingT)
+import           Control.Exception
 
 -- database functions
 
-runDB :: SqlPersist (ResourceT IO) a -> IO a
+runDB :: SqlPersistT (LoggingT (ResourceT IO)) a -> IO a
 runDB query = do
-  params      <- dbConnParams
+  params      <- dbConnParams 
   let connStr = foldr (\(k, v) t -> t <> (encodeUtf8 $ k <> "=" <> v <> " ")) "" params
---  runResourceT . return . withPostgresqlConn connStr $ runSqlConn query
-  undefined
+  putStrLn . show $ connStr
+  runResourceT . runStdoutLoggingT . withPostgresqlConn connStr $ runSqlConn query
+  

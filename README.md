@@ -1,37 +1,28 @@
-_haskell-on-heroku-tutorial_
+DSLR-App WWW 
 ============================
 
-Companion app for the [Haskell on Heroku tutorial](https://haskellonheroku.com/tutorial/).
+Companion API for the [PB&J Camera Dolly Controller](http://www.github.com/jhstanton/DSLR-App) to
+extend app functionality. The goal is to allow users to save keyframes independently of the user's
+device.
 
-Simple Haskell web service, built with [_servant_](https://hackage.haskell.org/package/servant).
+This is deployed to Heroku and built using Halcyon following the [Haskell on Heroku
+tutorial](https://haskellonheroku.com/tutorial/).
 
-
-Usage
------
-
-```
-$ PORT=8080 haskell-on-heroku-tutorial
-```
-
-
-### Installation
-
-Installs in one command on most systems, using [Halcyon](https://halcyon.sh/):
+To run this locally do the following - 
 
 ```
-$ halcyon install https://github.com/mietek/haskell-on-heroku-tutorial
+% cabal sandbox init
+% cabal install 
 ```
 
+If needed, export a DATABASE_URL environment variable for local development. This assumes a local
+Postgresql database already exists. The app performs all migrations automatically before serving
+content by using the [`Persistent`](http://hackage.haskell.org/package/persistent) library. 
 
-### Deployment
+```
+% export DATABASE_URL=postgres://$PG_USER:$PG_PW@$PG_HOST:$PG_PORT/$PG_DATABASE
+```
 
-Deploys in one click to a new [DigitalOcean](https://digitalocean.com/) droplet, or to the [Heroku](https://heroku.com/) platform:
-
-- [Deploy to DigitalOcean](https://halcyon.sh/deploy/?url=https://github.com/mietek/haskell-on-heroku-tutorial)
-- [Deploy to Heroku](https://heroku.com/deploy?template=https://github.com/mietek/haskell-on-heroku-tutorial)
-
-
-About
------
-
-Made by [Miëtek Bak](https://mietek.io/).  Published under the [MIT X11 license](https://mietek.io/license/).
+where `$PG_USER`, `$PG_PW`, `$PG_HOST`, `$PG_PORT`, and `$PG_DATABASE` are the Postgres user to
+connect with, the user's password, the server the database is hosted on, the port the service
+listens to, and, finally, the name of the Postgres database in the cluster. 

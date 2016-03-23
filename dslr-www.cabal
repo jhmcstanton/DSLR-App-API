@@ -26,5 +26,6 @@ executable dslr-www
                       persistent-postgresql,
                       persistent-template,
                       heroku,
-                      resourcet
+                      resourcet,
+                      monad-logger
   hs-source-dirs:     src

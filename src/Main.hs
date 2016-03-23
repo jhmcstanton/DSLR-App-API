@@ -30,12 +30,13 @@ server keyframeLists home =
 
 
 main :: IO ()
-main = do
-    hSetBuffering stdout LineBuffering
-    env <- getEnvironment
-    let port = maybe 8080 read $ lookup "PORT" env
-        home = maybe "Welcome to Haskell on Heroku" T.pack $
-                 lookup "TUTORIAL_HOME" env
-    emptyKeyframes <- newTVarIO []
-    runDB $ runMigration migrateAll
-    run port $ serve serverAPI $ server emptyKeyframes home
+main = do          
+  hSetBuffering stdout LineBuffering
+  env <- getEnvironment
+  let port = maybe 8080 read $ lookup "PORT" env
+      home = maybe "Welcome to Haskell on Heroku" T.pack $
+               lookup "TUTORIAL_HOME" env
+  emptyKeyframes <- newTVarIO []
+  runDB $ runMigration migrateAll
+  putStrLn "Ran migrations"
+  run port $ serve serverAPI $ server emptyKeyframes home
