@@ -3,6 +3,8 @@ import           Data.Text
 import           Network.Wai.Handler.Warp
 import           Servant
 import           Servant.Docs
+import           Servant.JS
+import qualified Servant.JS.Angular as NG
 import           System.Environment
 import           System.IO
 import           Database.Persist.Postgresql
@@ -44,8 +46,11 @@ main = do
   dbString <- buildDBString
   if "localhost" `T.isInfixOf` (T.decodeUtf8 dbString)
      then do
-       let docsToWrite = markdown $ docs serverAPI
-       writeFile "API.md" docsToWrite
+       let docsToWrite = markdown $ docs keyframeAPI
+       writeFile   "API.md" docsToWrite
+       writeJSForAPI keyframeAPI (angularServiceWith (NG.defAngularOptions { NG.serviceName = "backendService"})
+                                  (defCommonGeneratorOptions { moduleName = "dslr" })
+                                 ) "./angular-client.js"
      else return ()
   putStrLn "Ran migrations"
   run port $ serve serverAPI $ server home

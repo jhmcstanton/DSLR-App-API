@@ -18,6 +18,7 @@ executable dslr-www
                       servant,
                       servant-server,
                       servant-docs,
+                      servant-js,
                       text,
                       bytestring,
                       transformers,
