@@ -40,7 +40,6 @@ pwToByteString = encodeUtf8
 buildDBString = do
   params      <- dbConnParams 
   let connStr = foldr (\(k, v) t -> t <> (encodeUtf8 $ k <> "=" <> v <> " ")) "" params
-  putStrLn . show $ connStr
   return connStr
 
 runDB :: SqlPersistT (LoggingT (ResourceT IO)) a -> IO a

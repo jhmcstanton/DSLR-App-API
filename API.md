@@ -1,27 +1,3 @@
-## GET /
-
-#### Authentication
-
-
-
-Clients must supply the following data
-
-
-#### Response:
-
-- Status code 200
-- Headers: []
-
-- Supported content types are:
-
-    - `text/plain;charset=utf-8`
-
-- Response body as below.
-
-```
-Sample Text response
-```
-
 ## GET /api/all/:userId
 
 #### Authentication

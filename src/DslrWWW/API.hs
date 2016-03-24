@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 module DslrWWW.API (
     KeyframeAPI,
+    keyframeAPI,
     getAllKeyframes,
     getKeyframesByID,
     postKeyframeList,
