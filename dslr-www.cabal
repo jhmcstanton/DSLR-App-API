@@ -17,7 +17,7 @@ executable dslr-www
                       aeson,
                       servant,
                       servant-server,
-                      stm,
+                      servant-docs,
                       text,
                       bytestring,
                       transformers,

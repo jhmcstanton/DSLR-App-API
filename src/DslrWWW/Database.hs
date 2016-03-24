@@ -1,12 +1,14 @@
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module DslrWWW.Database (
+    buildDBString,
     runDB,
     checkPassword,
     insertUserHashPassword,
     getAllKeyframeLists,
     getSingleKeyframeList,
-    insertKeyframeList
+    insertKeyframeList,
+    insertUserHashPassword
   ) where
 
 import           DslrWWW.Types
@@ -35,11 +37,15 @@ pwToByteString = encodeUtf8
 
 -- database functions
 
-runDB :: SqlPersistT (LoggingT (ResourceT IO)) a -> IO a
-runDB query = do
+buildDBString = do
   params      <- dbConnParams 
   let connStr = foldr (\(k, v) t -> t <> (encodeUtf8 $ k <> "=" <> v <> " ")) "" params
   putStrLn . show $ connStr
+  return connStr
+
+runDB :: SqlPersistT (LoggingT (ResourceT IO)) a -> IO a
+runDB query = do
+  connStr <- buildDBString
   runResourceT . runStdoutLoggingT . withPostgresqlConn connStr $ runSqlConn query
   
 -- general queries
