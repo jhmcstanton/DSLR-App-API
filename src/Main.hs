@@ -1,4 +1,3 @@
-import           Control.Concurrent.STM
 import           Control.Monad.IO.Class
 import           Data.Text
 import           Network.Wai.Handler.Warp
@@ -12,8 +11,8 @@ import qualified Data.Text.IO as T
 
 import           DslrWWW.Types
 import           DslrWWW.API
-import           DslrWWW.Database
-import           DslrWWW.Database.Models
+import           DslrWWW.Database (runDB)
+import           DslrWWW.Database.Models (migrateAll)
 import           DslrWWW.Database.Marshal
 
 type ServerAPI = Get '[PlainText] Text :<|> KeyframeAPI
@@ -21,12 +20,12 @@ type ServerAPI = Get '[PlainText] Text :<|> KeyframeAPI
 serverAPI :: Proxy ServerAPI
 serverAPI = Proxy
 
-server :: TVar [KeyframeList] -> Text -> Server ServerAPI
-server keyframeLists home =
+server :: Text -> Server ServerAPI
+server home =
        return home
-  :<|> getAllKeyframes keyframeLists
-  :<|> getKeyframesByID keyframeLists
-  :<|> postKeyframeList keyframeLists
+  :<|> getAllKeyframes 
+  :<|> getKeyframesByID 
+  :<|> postKeyframeList
 
 
 main :: IO ()
@@ -36,7 +35,6 @@ main = do
   let port = maybe 8080 read $ lookup "PORT" env
       home = maybe "Welcome to Haskell on Heroku" T.pack $
                lookup "TUTORIAL_HOME" env
-  emptyKeyframes <- newTVarIO []
   runDB $ runMigration migrateAll
   putStrLn "Ran migrations"
-  run port $ serve serverAPI $ server emptyKeyframes home
+  run port $ serve serverAPI $ server home

@@ -3,7 +3,10 @@
 module DslrWWW.Database (
     runDB,
     checkPassword,
-    insertUserHashPassword
+    insertUserHashPassword,
+    getAllKeyframeLists,
+    getSingleKeyframeList,
+    insertKeyframeList
   ) where
 
 import           DslrWWW.Types
@@ -55,6 +58,17 @@ getAllKeyframeLists userKey = do
   let kfEntities = fmap (fmap (\(Entity _ kfEntity) -> kfEntity)) kfContents
   let kfZip = zip kfLists kfEntities
   return $ fmap (\((Entity listId kflEntry), contents) -> (listId, entryToKfList kflEntry contents)) kfZip
+
+getSingleKeyframeList uId kId = do
+  user <- get uId
+  kfl  <- get kId
+  frames <- selectList [KeyframeEntryT_list ==. kId] []
+  return $ do
+    _ <- user
+    k@(KeyframeListEntry uId' _) <- kfl
+    if uId' /= uId
+       then Nothing
+       else return $ entryToKfList k $ fmap (\(Entity _ f) -> f) frames
 
 -- update / delete functions
 
