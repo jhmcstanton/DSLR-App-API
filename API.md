@@ -19,7 +19,7 @@ Clients must supply the following data
 - Response body as below.
 
 ```
-ignore this
+Sample Text response
 ```
 
 ## GET /api/all/:userId

@@ -42,7 +42,7 @@ instance ToSample User where
   toSamples _ = singleSample (User (Username "jims_frames") "Jim" "Stanton" (Email "jim@pbjdollys.com"))
 
 instance ToSample T.Text where
-  toSamples _ = singleSample "ignore this"
+  toSamples _ = singleSample "Sample Text response"
 
 instance ToSample KeyframeList where
   toSamples _ =
