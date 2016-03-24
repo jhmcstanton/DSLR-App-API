@@ -26,3 +26,7 @@ content by using the [`Persistent`](http://hackage.haskell.org/package/persisten
 where `$PG_USER`, `$PG_PW`, `$PG_HOST`, `$PG_PORT`, and `$PG_DATABASE` are the Postgres user to
 connect with, the user's password, the server the database is hosted on, the port the service
 listens to, and, finally, the name of the Postgres database in the cluster. 
+
+The current URL for the dev shard on Heroku is (https://ancient-falls-78055.herokuapp.com)[https://ancient-falls-78055.herokuapp.com].
+
+API documentation can be found in the (API documentation generate by Servant)[API.md].

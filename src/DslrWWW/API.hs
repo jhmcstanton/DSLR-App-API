@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module DslrWWW.API (
     KeyframeAPI,
     getAllKeyframes,
@@ -15,6 +16,7 @@ import           Servant.Docs
 import           Database.Persist.Sql
 import           Control.Monad.IO.Class
 import           Control.Monad.Except
+import qualified Data.Text as T (Text)
 
 type KeyframeAPI =
        "api" :> "all" :> Capture "userId" Integer                                     :> Get  '[JSON] [(KeyframeListId, KeyframeList)]
@@ -24,6 +26,40 @@ type KeyframeAPI =
 
 -- instances for documentation
 
+instance ToCapture (Capture "userId" Integer) where
+  toCapture _ = DocCapture "userId" "(integer) user id in database"
+
+instance ToCapture (Capture "frameListID" Integer) where
+  toCapture _ = DocCapture "frameListID" "(integer) keyframe list id in database"
+
+instance ToSample (Maybe UserId) where
+  toSamples _ = singleSample (Just (UserId 5432))
+
+instance ToSample Password where
+  toSamples _ = singleSample (Password "UserPassword")
+
+instance ToSample User where
+  toSamples _ = singleSample (User (Username "jims_frames") "Jim" "Stanton" (Email "jim@pbjdollys.com"))
+
+instance ToSample T.Text where
+  toSamples _ = singleSample "ignore this"
+
+instance ToSample KeyframeList where
+  toSamples _ =
+    [ ("Keyframe list with minimum info", emptyCase)
+    , ("Small, named keyframe", singleFrame)
+    , ("Multiple frames - the DSLR Dolly can generate transitions for this", multipleFrames)
+    ]
+
+
+    
+emptyCase      = KeyframeList Nothing []
+singleFrame    = KeyframeList (Just "My Starter Keyframe List") [initFrame]
+multipleFrames = KeyframeList (Just "A few more frames") [initFrame, Keyframe 15 0 0 30, Keyframe 15 30 30 40]
+initFrame      = Keyframe 0 0 0 0
+
+instance ToSample KeyframeListId where
+  toSamples _ = singleSample (KeyframeListId 321)
 
 keyframeAPI :: Proxy KeyframeAPI
 keyframeAPI = Proxy

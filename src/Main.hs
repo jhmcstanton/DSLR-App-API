@@ -41,6 +41,11 @@ main = do
                lookup "TUTORIAL_HOME" env
   runDB $ runMigration migrateAll
   -- build docs if this is on a dev machine
-
+  dbString <- buildDBString
+  if "localhost" `T.isInfixOf` (T.decodeUtf8 dbString)
+     then do
+       let docsToWrite = markdown $ docs serverAPI
+       writeFile "API.md" docsToWrite
+     else return ()
   putStrLn "Ran migrations"
   run port $ serve serverAPI $ server home
