@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module DslrWWW.Database (
     runDB,
     checkPassword,
@@ -24,8 +25,6 @@ import           Control.Monad.Reader
 import           Control.Monad.IO.Class
 import           Control.Applicative
 import qualified Data.Traversable as T
-import qualified Database.Esqueleto as E
-import           Database.Esqueleto (^.)
 
 -- some settings to keep track of
 hashStrength   = 14
@@ -59,37 +58,23 @@ getAllKeyframeLists userKey = do
 
 -- update / delete functions
 
---deleteKeyframeList :: Key UserEntry -> Key KeyframeListEntry -> ReaderT SqlBackend m (Maybe ())
+deleteKeyframeList :: (Applicative m, MonadIO m) => Key UserEntry -> Key KeyframeListEntry -> ReaderT SqlBackend m (Maybe ())
 deleteKeyframeList userId kfListId = do
   maybeUser   <- get userId
   maybeKfList <- get kfListId
-  deleteWhere [KeyframeEntryT_list ==. kfListId]
-{-    if userId' /= userId
-       then Nothing
-       else Just $ do
-         keyframes <- selectList [KeyframeEntryT_list ==. kfListId] []
-         T.traverse (\(Entity id _) -> delete id) keyframes
-         return kfListId-}
-      
-{-updateKeyframeList userId kfListId (KeyframeList newName newFrames) = do
-  maybeKfListEntity <- get kfListId
-  sequence $ maybeKfListEntity >>= op
+  T.traverse runDeletes $ maybeUser >>= (\_ -> maybeKfList) 
   where
-    op (Entity _ (KeyframeListEntry kfuserId _)) =
-      if userId /= kfuserId
-         then Nothing
-         else Just $ do 
-           update kfListId [KeyframeListEntryT_listName =. newName]
-           -- remove old keyframes
-           deleteBy $ KeyframeEntryT_list kfuserId
-           -- add the new ones
-           T.traverse (\(Keyframe pos pan tilt time) ->
-                        insert $ KeyframeEntry kfListId pos pan tilt time) newFrames-}
-
+    runDeletes (KeyframeListEntry userId' _) =
+      if userId /= userId'
+         then return ()
+         else do
+           deleteWhere [KeyframeEntryT_list ==. kfListId]
+           delete kfListId
+           
 -- insertion functions
 
 insertKeyframeList :: (MonadIO m, Applicative m) => Key UserEntry -> KeyframeList -> ReaderT SqlBackend m (Maybe (Key KeyframeListEntry))
-insertKeyframeList userKey (KeyframeList kfName frames) = do
+insertKeyframeList userKey (KeyframeList kfName frames) = do  
   maybeUser <- get userKey
   T.sequence $ fmap insertFrames maybeUser
   where

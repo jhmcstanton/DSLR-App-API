@@ -26,7 +26,6 @@ executable dslr-www
                       persistent,
                       persistent-postgresql,
                       persistent-template,
-                      esqueleto,
                       heroku,
                       resourcet,
                       monad-logger,
