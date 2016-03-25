@@ -28,11 +28,7 @@ serverAPI = Proxy
 server :: Text -> Server ServerAPI
 server home =
        return home
-  :<|> getAllKeyframes
-  :<|> (uncurry addUser)
-  :<|> getKeyframesByID 
-  :<|> postKeyframeList
-
+  :<|> keyframeEndpoints     
 
 main :: IO ()
 main = do          

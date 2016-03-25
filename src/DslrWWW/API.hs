@@ -2,6 +2,7 @@
 module DslrWWW.API (
     KeyframeAPI,
     keyframeAPI,
+    keyframeEndpoints,
     getAllKeyframes,
     getKeyframesByID,
     postKeyframeList,
@@ -12,55 +13,44 @@ import           DslrWWW.Types
 import qualified DslrWWW.Database as DB
 import           DslrWWW.Database.Models
 
+import           Data.ByteString (ByteString)
 import           Servant
 import           Servant.Docs
+import           Servant.API.BasicAuth (BasicAuthData (BasicAuthData))
+import           Servant.API.Experimental.Auth (AuthProtect)
 import           Database.Persist.Sql
 import           Control.Monad.IO.Class
 import           Control.Monad.Except
 import qualified Data.Text as T (Text)
 
-type KeyframeAPI =
-       "api" :> "all" :> Capture "userId" Integer                                     :> Get  '[JSON] [(KeyframeListId, KeyframeList)]
-  :<|> "api" :> "user" :> "new" :> ReqBody '[JSON] (User, Password)                   :> Post '[JSON] (Maybe UserId)
-  :<|> "api" :> "single" :> Capture "userId" Integer :> Capture "frameListID" Integer :> Get  '[JSON] (Maybe KeyframeList)
-  :<|> "api" :> "new" :> Capture "userId" Integer :> ReqBody '[JSON] KeyframeList     :> Post '[JSON] (Maybe KeyframeListId)
+type KeyframeAPI = "api" :> (PublicAPI :<|> PrivateAPI)
 
--- instances for documentation
+keyframeEndpoints :: Server KeyframeAPI
+keyframeEndpoints =
+  ((uncurry addUser)
+  :<|> login)
+  :<|> getAllKeyframes
+  :<|> getKeyframesByID 
+  :<|> postKeyframeList
+
+type PublicAPI =
+       "user" :> "new"   :> ReqBody '[JSON] (User, Password)                  :> Post '[JSON] (UserId, LoginToken)
+  :<|> "user" :> "login"                              :> Get  '[JSON] LoginToken
+--  :<|> "user" :> "login" :> BasicAuth "login" User                             :> Get  '[OctetStream] LoginToken
+
+type PrivateAPI =
+       "all" :> Capture "userId" Integer                                     :> Get  '[JSON] [(KeyframeListId, KeyframeList)]
+  :<|> "single" :> Capture "userId" Integer :> Capture "frameListID" Integer :> Get  '[JSON] (Maybe KeyframeList)
+  :<|> "new" :> Capture "userId" Integer :> ReqBody '[JSON] KeyframeList     :> Post '[JSON] (Maybe KeyframeListId)
+       
+-- more instance for documentation
+
 
 instance ToCapture (Capture "userId" Integer) where
   toCapture _ = DocCapture "userId" "(integer) user id in database"
 
 instance ToCapture (Capture "frameListID" Integer) where
   toCapture _ = DocCapture "frameListID" "(integer) keyframe list id in database"
-
-instance ToSample (Maybe UserId) where
-  toSamples _ = singleSample (Just (UserId 5432))
-
-instance ToSample Password where
-  toSamples _ = singleSample (Password "UserPassword")
-
-instance ToSample User where
-  toSamples _ = singleSample (User (Username "jims_frames") "Jim" "Stanton" (Email "jim@pbjdollys.com"))
-
-instance ToSample T.Text where
-  toSamples _ = singleSample "Sample Text response"
-
-instance ToSample KeyframeList where
-  toSamples _ =
-    [ ("Keyframe list with minimum info", emptyCase)
-    , ("Small, named keyframe", singleFrame)
-    , ("Multiple frames - the DSLR Dolly can generate transitions for this", multipleFrames)
-    ]
-
-
-    
-emptyCase      = KeyframeList Nothing []
-singleFrame    = KeyframeList (Just "My Starter Keyframe List") [initFrame]
-multipleFrames = KeyframeList (Just "A few more frames") [initFrame, Keyframe 15 0 0 30, Keyframe 15 30 30 40]
-initFrame      = Keyframe 0 0 0 0
-
-instance ToSample KeyframeListId where
-  toSamples _ = singleSample (KeyframeListId 321)
 
 keyframeAPI :: Proxy KeyframeAPI
 keyframeAPI = Proxy
@@ -85,7 +75,11 @@ postKeyframeList uId kfList = liftIO $ do
   return $ fmap (KeyframeListId . fromIntegral . unSqlBackendKey . unKeyframeListEntryKey) kfKey
 
 -- need to check how this could fail
-addUser :: MonadIO m => User -> Password -> m (Maybe UserId)
+addUser :: MonadIO m => User -> Password -> m (UserId, LoginToken)
 addUser user pw = do
-  userKey <- liftIO $ DB.insertUserHashPassword user pw 
-  return . Just . UserId . fromIntegral . unSqlBackendKey . unUserEntryKey $ userKey
+  (userKey, token) <- liftIO $ DB.insertUserHashPassword user pw 
+  let userId = UserId . fromIntegral . unSqlBackendKey . unUserEntryKey $ userKey
+  return (userId, token)
+
+login :: MonadIO m => m LoginToken
+login = return $ undefined

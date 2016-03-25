@@ -1,13 +1,5 @@
 dslr.service('backendService', function($http) {
   return ({
-getApiAllByUserId: function(userId)
-{
-  return $http(
-    { url: '/api/all/' + encodeURIComponent(userId) + ''
-    , method: 'GET'
-    });
-}
-,
 postApiUserNew: function(body)
 {
   return $http(
@@ -15,6 +7,22 @@ postApiUserNew: function(body)
     , data: JSON.stringify(body)
     , contentType: 'application/json'
     , method: 'POST'
+    });
+}
+,
+getApiUserLogin: function()
+{
+  return $http(
+    { url: '/api/user/login'
+    , method: 'GET'
+    });
+}
+,
+getApiAllByUserId: function(userId)
+{
+  return $http(
+    { url: '/api/all/' + encodeURIComponent(userId) + ''
+    , method: 'GET'
     });
 }
 ,

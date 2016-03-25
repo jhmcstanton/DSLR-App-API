@@ -20,6 +20,7 @@ executable dslr-www
                       servant-docs,
                       servant-js,
                       text,
+                      base64-bytestring,
                       bytestring,
                       transformers,
                       warp,
@@ -30,5 +31,6 @@ executable dslr-www
                       heroku,
                       resourcet,
                       monad-logger,
-                      pwstore-fast
+                      pwstore-fast,
+                      time
   hs-source-dirs:     src

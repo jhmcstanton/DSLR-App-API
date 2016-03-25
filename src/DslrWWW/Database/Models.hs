@@ -9,7 +9,7 @@ import           DslrWWW.Types
 
 import           Database.Persist.TH
 import           Data.Text (Text)
-import           Data.ByteString
+import           Data.ByteString (ByteString)
 
 
 -- newtypes for marshaling to the database, unfortunate but necessary
@@ -34,4 +34,9 @@ KeyframeEntry
   t_tiltAngle Double
   t_time      Double
   deriving Show
+LoginTokenEntry
+  t_user      UserEntryId
+  UniqueUser  t_user
+  t_validUntil Int
+  t_token     ByteString
 |]

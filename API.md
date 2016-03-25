@@ -143,6 +143,30 @@ null
 {"keyframes":[{"tiltAngle":0,"time":0,"panAngle":0,"position":0},{"tiltAngle":0,"time":30,"panAngle":0,"position":15},{"tiltAngle":30,"time":40,"panAngle":30,"position":15}],"name":"A few more frames"}
 ```
 
+## GET /api/user/login
+
+#### Authentication
+
+
+
+Clients must supply the following data
+
+
+#### Response:
+
+- Status code 200
+- Headers: []
+
+- Supported content types are:
+
+    - `application/json`
+
+- Response body as below.
+
+```javascript
+{"token":""}
+```
+
 ## POST /api/user/new
 
 #### Authentication
@@ -176,6 +200,6 @@ Clients must supply the following data
 - Response body as below.
 
 ```javascript
-5432
+[5432,{"token":""}]
 ```
 
