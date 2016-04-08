@@ -8,7 +8,8 @@ module DslrWWW.Database (
     getAllKeyframeLists,
     getSingleKeyframeList,
     insertKeyframeList,
-    insertUserHashPassword
+    insertUserHashPassword,
+    insertUserCreateSession
   ) where
 
 import           DslrWWW.Types
@@ -32,6 +33,7 @@ import           Control.Monad.Reader
 import           Control.Monad.IO.Class
 import           Control.Applicative
 import qualified Data.Traversable as T
+import           Data.Time.Clock (addUTCTime)
 import           Data.Time.Clock.POSIX
 
 -- some settings to keep track of
@@ -101,26 +103,42 @@ insertKeyframeList userKey (KeyframeList kfName frames) = do
 
 -- user functions
 
-insertLoginKey :: MonadIO m => UserEntryId -> ReaderT SqlBackend m (LoginToken)
+{-insertLoginKey :: MonadIO m => UserEntryId -> ReaderT SqlBackend m (LoginToken)
 insertLoginKey uid = do
   time <- liftIO getPOSIXTime
   let validEndTime = time + posixDayLength
   token <- liftIO $ makePassword (pack $ show time ++ "mzns'lKjHaalBYlamABqhshAYqjAGmcBUqkh1i(A12j28AKu721k") hashStrength
   let tokenEntry = LoginTokenEntry uid (round validEndTime) (encode token)
   insert $ tokenEntry
-  return $ entryToLoginToken tokenEntry
+  return $ entryToLoginToken tokenEntry-}
+
+insertUserCreateSession :: User -> Password -> IPAddress -> UserAgent -> IO (Key UserSessionEntry)
+insertUserCreateSession user password ip agent = do
+  uid <- insertUserHashPassword user password
+  sid <- runDB $ createSession uid ip agent -- super gross hack
+  return $ sid
+
+createSession :: MonadIO m => UserEntryId -> IPAddress -> UserAgent -> ReaderT SqlBackend m (Key UserSessionEntry)
+createSession uid (IPAddress (fst, snd, thd, fth)) (UserAgent agent) = do
+  curTime     <- liftIO $ getPOSIXTime
+  let expires = utcTimeToPOSIXSeconds $ addUTCTime (fromIntegral $ 24 * 60 * 60) (posixSecondsToUTCTime curTime)
+  deleteBy $ UniqueOwner uid
+  session     <- insert $ UserSessionEntry uid fst snd thd fth agent (truncate expires)
+  Just (Entity sessionID _) <- getBy $ UniqueOwner uid
+  
+  return  sessionID
 
 insertUser :: MonadIO m => User -> ByteString -> ReaderT SqlBackend m (Key UserEntry)
 insertUser (User (Username name) first last (Email mail)) hashedPassword = do
   userID <- insert $ UserEntry first last name mail hashedPassword
   return userID
 
-insertUserHashPassword :: User -> Password -> IO (Key UserEntry, LoginToken)
+insertUserHashPassword :: User -> Password -> IO (Key UserEntry)
 insertUserHashPassword user (Password pw) = do
   passwordHash <- makePassword (pwToByteString pw) hashStrength
-  runDB $ insertUser user passwordHash >>= (\uid -> insertLoginKey uid >>= \key -> return (uid, key))
+  runDB $ insertUser user passwordHash -- >>= (\uid -> insertLoginKey uid >>= \key -> return (uid, key))
 
-loginUser :: (Functor m, MonadIO m) => Username -> Password -> ReaderT SqlBackend m (Maybe LoginToken)
+{-loginUser :: (Functor m, MonadIO m) => Username -> Password -> ReaderT SqlBackend m (Maybe (Key UserEntry, LoginToken))
 loginUser username pw = do
   verified <- checkPassword username pw
   case verified of
@@ -128,16 +146,11 @@ loginUser username pw = do
     Just uid -> do
       tokenEntity <- getBy (UniqueUser uid)
       case tokenEntity of
-        Nothing -> fmap Just . insertLoginKey $ uid 
-        Just (Entity _ entry) -> return . Just . entryToLoginToken $ entry
-          
-        
-{-  verified <- checkPassword username pw
-  if not verified
-     then return Nothing
-     else do
-       maybeToken <- getBy (UniqueUser -}
-  
+        Nothing -> fmap (wrapResult uid) . insertLoginKey $ uid 
+        Just (Entity _ entry) -> return . wrapResult uid . entryToLoginToken $ entry
+   where
+     wrapResult uid token = Just (uid, token)-}
+                  
   
 checkPassword :: MonadIO m => Username -> Password -> ReaderT SqlBackend m (Maybe (Key UserEntry))
 checkPassword (Username name) (Password pwd) = do

@@ -2,7 +2,7 @@ module DslrWWW.Database.Marshal (
     entryToUser,
     entryToKeyframe,
     entryToKfList,
-    entryToLoginToken
+    entryToIPAddress
   )where
 
 import           DslrWWW.Database.Models
@@ -31,5 +31,6 @@ entryToKfList (KeyframeListEntry _ t_listName) kfs =
                  keyframes = fmap entryToKeyframe kfs
                }
 
-entryToLoginToken :: LoginTokenEntry -> LoginToken
-entryToLoginToken (LoginTokenEntry _ _ token) = LoginToken token
+entryToIPAddress :: UserSessionEntry -> IPAddress
+entryToIPAddress (UserSessionEntry _ fst snd thd fth _ _) =
+  IPAddress (fst, snd, thd, fth)

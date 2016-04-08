@@ -10,6 +10,8 @@ import           DslrWWW.Types
 import           Database.Persist.TH
 import           Data.Text (Text)
 import           Data.ByteString (ByteString)
+import           Data.Time.Clock.POSIX
+import           Data.Int(Int64, Int8)
 
 
 -- newtypes for marshaling to the database, unfortunate but necessary
@@ -34,9 +36,14 @@ KeyframeEntry
   t_tiltAngle Double
   t_time      Double
   deriving Show
-LoginTokenEntry
-  t_user      UserEntryId
-  UniqueUser  t_user
-  t_validUntil Int
-  t_token     ByteString
+UserSessionEntry
+  t_user       UserEntryId
+  UniqueOwner  t_user
+  t_ip_fst     Int8
+  t_ip_snd     Int8
+  t_ip_thd     Int8
+  t_ip_fth     Int8
+  t_user_agent Text
+  t_expires    Int64
+  deriving Show
 |]
