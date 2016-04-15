@@ -83,7 +83,7 @@ instance ToCapture (Capture "frameListID" Integer) where
   toCapture _  = DocCapture "frameListID" "(integer) keyframe list id in database"
 
 instance ToAuthInfo (BasicAuth "login" UserId) where
-  toAuthInfo _ = DocAuthentication "HTTP BasicAuthentication" "username:password"
+  toAuthInfo _ = DocAuthentication "HTTP BasicAuthentication" "BasicAuthentication: username:password"
 
 keyframeAPI :: Proxy KeyframeAPI
 keyframeAPI = Proxy

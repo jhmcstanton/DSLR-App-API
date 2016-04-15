@@ -21,6 +21,7 @@ import           Data.Aeson
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import           Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as BS (pack) 
 import           Data.Monoid
 import           Control.Applicative
 import           Control.Monad
@@ -98,7 +99,7 @@ instance ToSample User where
   toSamples _ = singleSample (User (Username "jims_frames") "Jim" "Stanton" (Email "jim@pbjdollys.com"))
 
 instance ToSample TokenStream where
-  toSamples _ = singleSample (TokenStream mempty)
+  toSamples _ = singleSample (TokenStream $ BS.pack ("JWT" :: String) )
 
 instance ToSample T.Text where
   toSamples _ = singleSample "Sample Text response"

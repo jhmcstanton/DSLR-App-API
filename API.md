@@ -151,7 +151,7 @@ HTTP BasicAuthentication
 
 
 Clients must supply the following data
-username:password
+BasicAuthentication: username:password
 
 
 #### Response:
@@ -166,7 +166,7 @@ username:password
 - Response body as below.
 
 ```
-
+JWT
 ```
 
 ## POST /api/user/new
