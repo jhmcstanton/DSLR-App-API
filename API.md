@@ -147,9 +147,11 @@ null
 
 #### Authentication
 
+HTTP BasicAuthentication
 
 
 Clients must supply the following data
+username:password
 
 
 #### Response:
@@ -159,12 +161,12 @@ Clients must supply the following data
 
 - Supported content types are:
 
-    - `application/json`
+    - `application/octet-stream`
 
 - Response body as below.
 
-```javascript
-{"token":""}
+```
+
 ```
 
 ## POST /api/user/new
@@ -200,6 +202,6 @@ Clients must supply the following data
 - Response body as below.
 
 ```javascript
-[5432,{"token":""}]
+5432
 ```
 

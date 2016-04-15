@@ -8,7 +8,11 @@ import qualified Servant.JS.Angular as NG
 import           System.Environment
 import           System.IO
 import           Database.Persist.Postgresql
-import qualified Data.List as L 
+import qualified Data.List as L
+import           Crypto.JWT
+import           Crypto.JOSE.JWS
+import           Crypto.JOSE.JWK
+
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -25,10 +29,10 @@ type ServerAPI = Get '[PlainText] Text :<|> KeyframeAPI
 serverAPI :: Proxy ServerAPI
 serverAPI = Proxy
 
-server :: Text -> Server ServerAPI
-server home =
+server :: Text -> JWK -> JWSHeader -> Server ServerAPI
+server home jwk headers =
        return home
-  :<|> keyframeEndpoints     
+  :<|> keyframeEndpoints jwk headers 
 
 main :: IO ()
 main = do          
@@ -44,9 +48,11 @@ main = do
      then do
        let docsToWrite = markdown $ docs keyframeAPI
        writeFile   "API.md" docsToWrite
-       writeJSForAPI keyframeAPI (angularServiceWith (NG.defAngularOptions { NG.serviceName = "backendService"})
-                                  (defCommonGeneratorOptions { moduleName = "dslr" })
-                                 ) "./angular-client.js"
+       writeJSForAPI apiToJS (angularServiceWith (NG.defAngularOptions { NG.serviceName = "backendService"})
+                              (defCommonGeneratorOptions { moduleName = "dslr" })
+                             ) "./angular-client.js"
      else return ()
   putStrLn "Ran migrations"
-  run port $ serve serverAPI $ server home
+  jwk        <- genJWK $ RSAGenParam 2048
+  let header = newJWSHeader HS256
+  run port $ serveWithContext serverAPI serverContext $ server home jwk header

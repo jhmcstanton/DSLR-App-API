@@ -11,6 +11,7 @@ module DslrWWW.Types
     Password(..),
     UserId(..),
     KeyframeListId(..),
+    TokenStream(..)
   ) where
 
 import           Servant.Docs
@@ -19,10 +20,11 @@ import           GHC.Generics
 import           Data.Aeson
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import           Data.ByteString (ByteString)
+import           Data.ByteString.Lazy (ByteString)
 import           Data.Monoid
 import           Control.Applicative
 import           Control.Monad
+import           Data.Proxy
 
 data Keyframe = Keyframe {
     position  :: Double,
@@ -77,6 +79,15 @@ newtype KeyframeListId = KeyframeListId Integer deriving (Generic)
 instance FromJSON KeyframeListId
 instance ToJSON   KeyframeListId
 
+newtype TokenStream    = TokenStream ByteString deriving (Generic)
+
+instance MimeRender OctetStream TokenStream where
+  mimeRender p (TokenStream bs) = mimeRender p bs
+
+instance MimeUnrender OctetStream TokenStream where
+  mimeUnrender p bs = fmap TokenStream $ mimeUnrender p bs
+
+
 instance ToSample  UserId where
   toSamples _ = singleSample (UserId 5432)
 
@@ -86,9 +97,12 @@ instance ToSample Password where
 instance ToSample User where
   toSamples _ = singleSample (User (Username "jims_frames") "Jim" "Stanton" (Email "jim@pbjdollys.com"))
 
+instance ToSample TokenStream where
+  toSamples _ = singleSample (TokenStream mempty)
+
 instance ToSample T.Text where
   toSamples _ = singleSample "Sample Text response"
-
+                             
 instance ToSample KeyframeList where
   toSamples _ =
     [ ("Keyframe list with minimum info", emptyCase)
@@ -96,13 +110,10 @@ instance ToSample KeyframeList where
     , ("Multiple frames - the DSLR Dolly can generate transitions for this", multipleFrames)
     ]
 
+instance ToSample KeyframeListId where
+  toSamples _ = singleSample (KeyframeListId 321)
     
 emptyCase      = KeyframeList Nothing []
 singleFrame    = KeyframeList (Just "My Starter Keyframe List") [initFrame]
 multipleFrames = KeyframeList (Just "A few more frames") [initFrame, Keyframe 15 0 0 30, Keyframe 15 30 30 40]
 initFrame      = Keyframe 0 0 0 0
-
-instance ToSample KeyframeListId where
-  toSamples _ = singleSample (KeyframeListId 321)
-
-  

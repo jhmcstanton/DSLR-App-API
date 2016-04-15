@@ -1,12 +1,13 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE DataKinds          #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE FlexibleContexts   #-}
 module DslrWWW.API (
     KeyframeAPI,
+    apiToJS,
     keyframeAPI,
     keyframeEndpoints,
---    serverContext,
+    serverContext,
     getAllKeyframes,
     getKeyframesByID,
     postKeyframeList,
@@ -17,9 +18,10 @@ import           DslrWWW.Types
 import qualified DslrWWW.Database as DB
 import           DslrWWW.Database.Models
 
-import           Data.ByteString (ByteString)
+import           Data.ByteString.Lazy (ByteString)
 import           Servant
 import           Servant.Docs
+import           Servant.Docs.Internal
 import           Servant.API.BasicAuth (BasicAuthData (BasicAuthData))
 import           Servant.API.Experimental.Auth (AuthProtect)
 import           Database.Persist.Sql
@@ -29,6 +31,7 @@ import           Control.Monad.Trans.Except
 import           Crypto.JWT
 import           Crypto.JOSE.JWS
 import           Crypto.JOSE.JWK
+import           Crypto.JOSE.Compact 
 import           Crypto.JOSE.Error (Error(..))
 import qualified Data.Text as T (Text)
 import qualified Data.Text.Encoding as T (decodeUtf8)
@@ -37,27 +40,33 @@ import           Data.Time.Clock (addUTCTime, UTCTime)
 import           Data.Time.Clock.POSIX (getPOSIXTime, posixSecondsToUTCTime)
 import           Data.Aeson (toJSON, fromJSON, Result(..))
 import           Data.Default.Class
+import           Data.Foldable (fold)
 
 issName, idKey :: T.Text
 issName = "pbjdollys.com"
 idKey   = "userid"
 
 type KeyframeAPI = "api" :> (PublicAPI :<|> PrivateAPI)
+-- this is a workaround to avoid a missing instance for JS generation in endpoints with OctetStream results
+type APIToJS    = "api" :> (PublicAPI' :<|> PrivateAPI)
 
 serverContext :: Context (BasicAuthCheck UserId ': '[])
 serverContext = loginCheck :. EmptyContext
 
-keyframeEndpoints :: Server KeyframeAPI
-keyframeEndpoints =
-  ((uncurry addUser))
-  -- :<|> login)
+keyframeEndpoints :: JWK -> JWSHeader -> Server KeyframeAPI
+keyframeEndpoints jwk headers =
+  ((uncurry addUser)
+  :<|> loginHandler jwk headers)
   :<|> getAllKeyframes
   :<|> getKeyframesByID 
   :<|> postKeyframeList
 
-type PublicAPI =
+type PublicAPI' =
        "user" :> "new"   :> ReqBody '[JSON] (User, Password)                  :> Post '[JSON] UserId
---  :<|> "user" :> "login" :> BasicAuth "login" User                             :> Get  '[JSON] JWT
+
+type PublicAPI =
+  PublicAPI'
+  :<|> "user" :> "login" :> BasicAuth "login" UserId                          :> Get  '[OctetStream] TokenStream -- '[JSON] JWT
 
 type PrivateAPI =
        "all" :> Capture "userId" Integer                                     :> Get  '[JSON] [(KeyframeListId, KeyframeList)]
@@ -68,13 +77,19 @@ type PrivateAPI =
 
 
 instance ToCapture (Capture "userId" Integer) where
-  toCapture _ = DocCapture "userId" "(integer) user id in database"
+  toCapture _  = DocCapture "userId" "(integer) user id in database"
 
 instance ToCapture (Capture "frameListID" Integer) where
-  toCapture _ = DocCapture "frameListID" "(integer) keyframe list id in database"
+  toCapture _  = DocCapture "frameListID" "(integer) keyframe list id in database"
+
+instance ToAuthInfo (BasicAuth "login" UserId) where
+  toAuthInfo _ = DocAuthentication "HTTP BasicAuthentication" "username:password"
 
 keyframeAPI :: Proxy KeyframeAPI
 keyframeAPI = Proxy
+
+apiToJS :: Proxy APIToJS
+apiToJS = Proxy
 
 -- functions for each endpoint
 
@@ -111,22 +126,23 @@ loginCheck = BasicAuthCheck check where
       Nothing    -> return Unauthorized
       (Just uid) -> return . Authorized . UserId . fromIntegral . unSqlBackendKey . unUserEntryKey $ uid
 
-loginHandler :: (MonadIO m, MonadRandom (ExceptT ServantErr m)) => JWK -> JWSHeader -> UserId -> ExceptT ServantErr m JWT
+loginHandler :: (MonadIO m) => JWK -> JWSHeader -> UserId -> ExceptT ServantErr m TokenStream -- JWT
 loginHandler jwk header uid = do
   curTime <- liftIO getPOSIXTime
   token <- mkToken jwk header (posixSecondsToUTCTime curTime) uid
   case token of
-    Left _ -> throwE err500 
-    Right token -> return token
-
+    Left _      -> throwE err500 
+    Right token -> 
+      case toCompact token of
+        Left _             -> throwE err500
+        Right compactToken -> return . TokenStream . fold $ compactToken
 
 validateJWT :: MonadRandom m => JWK -> JWT -> m Bool
 validateJWT jwk jwt = do
---  jwk <- genJWK $ RSAGenParam 2048
   return (validateJWSJWT def AnyValidated jwk jwt)
 
-mkToken :: MonadRandom m => JWK -> JWSHeader -> UTCTime -> UserId -> m (Either Error JWT)
-mkToken secret header curTime userId = createJWSJWT secret header claims where
+mkToken :: MonadIO m => JWK -> JWSHeader -> UTCTime -> UserId -> m (Either Error JWT)
+mkToken secret header curTime userId = liftIO (createJWSJWT secret header claims) where
   claims = emptyClaimsSet {
     _claimIss = Just (fromString issName),
     _claimExp  = (Just $ NumericDate $ addUTCTime (24 * 60 * 60) curTime),

@@ -10,14 +10,6 @@ postApiUserNew: function(body)
     });
 }
 ,
-getApiUserLogin: function()
-{
-  return $http(
-    { url: '/api/user/login'
-    , method: 'GET'
-    });
-}
-,
 getApiAllByUserId: function(userId)
 {
   return $http(
