@@ -32,5 +32,8 @@ executable dslr-www
                       resourcet,
                       monad-logger,
                       pwstore-fast,
-                      time
+                      time,
+                      jose,
+                      unordered-containers,
+                      data-default-class
   hs-source-dirs:     src

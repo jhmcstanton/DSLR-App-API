@@ -1,8 +1,12 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts  #-}
 module DslrWWW.API (
     KeyframeAPI,
     keyframeAPI,
     keyframeEndpoints,
+--    serverContext,
     getAllKeyframes,
     getKeyframesByID,
     postKeyframeList,
@@ -21,22 +25,39 @@ import           Servant.API.Experimental.Auth (AuthProtect)
 import           Database.Persist.Sql
 import           Control.Monad.IO.Class
 import           Control.Monad.Except
+import           Control.Monad.Trans.Except
+import           Crypto.JWT
+import           Crypto.JOSE.JWS
+import           Crypto.JOSE.JWK
+import           Crypto.JOSE.Error (Error(..))
 import qualified Data.Text as T (Text)
+import qualified Data.Text.Encoding as T (decodeUtf8)
+import qualified Data.HashMap.Strict as HM
+import           Data.Time.Clock (addUTCTime, UTCTime)
+import           Data.Time.Clock.POSIX (getPOSIXTime, posixSecondsToUTCTime)
+import           Data.Aeson (toJSON, fromJSON, Result(..))
+import           Data.Default.Class
+
+issName, idKey :: T.Text
+issName = "pbjdollys.com"
+idKey   = "userid"
 
 type KeyframeAPI = "api" :> (PublicAPI :<|> PrivateAPI)
 
+serverContext :: Context (BasicAuthCheck UserId ': '[])
+serverContext = loginCheck :. EmptyContext
+
 keyframeEndpoints :: Server KeyframeAPI
 keyframeEndpoints =
-  ((uncurry addUser)
-  :<|> login)
+  ((uncurry addUser))
+  -- :<|> login)
   :<|> getAllKeyframes
   :<|> getKeyframesByID 
   :<|> postKeyframeList
 
 type PublicAPI =
-       "user" :> "new"   :> ReqBody '[JSON] (User, Password)                  :> Post '[JSON] (UserId, LoginToken)
-  :<|> "user" :> "login"                              :> Get  '[JSON] LoginToken
---  :<|> "user" :> "login" :> BasicAuth "login" User                             :> Get  '[OctetStream] LoginToken
+       "user" :> "new"   :> ReqBody '[JSON] (User, Password)                  :> Post '[JSON] UserId
+--  :<|> "user" :> "login" :> BasicAuth "login" User                             :> Get  '[JSON] JWT
 
 type PrivateAPI =
        "all" :> Capture "userId" Integer                                     :> Get  '[JSON] [(KeyframeListId, KeyframeList)]
@@ -75,11 +96,42 @@ postKeyframeList uId kfList = liftIO $ do
   return $ fmap (KeyframeListId . fromIntegral . unSqlBackendKey . unKeyframeListEntryKey) kfKey
 
 -- need to check how this could fail
-addUser :: MonadIO m => User -> Password -> m (UserId, LoginToken)
+addUser :: MonadIO m => User -> Password -> m UserId
 addUser user pw = do
-  (userKey, token) <- liftIO $ DB.insertUserHashPassword user pw 
+  userKey <- liftIO $ DB.insertUserHashPassword user pw 
   let userId = UserId . fromIntegral . unSqlBackendKey . unUserEntryKey $ userKey
-  return (userId, token)
+  return userId
 
-login :: MonadIO m => m LoginToken
-login = return $ undefined
+
+loginCheck :: BasicAuthCheck UserId
+loginCheck = BasicAuthCheck check where
+  check (BasicAuthData username password) = do
+    maybeUid <- DB.runDB $ DB.checkPassword (Username $ T.decodeUtf8 username) (Password $ T.decodeUtf8 password)
+    case maybeUid of
+      Nothing    -> return Unauthorized
+      (Just uid) -> return . Authorized . UserId . fromIntegral . unSqlBackendKey . unUserEntryKey $ uid
+
+loginHandler :: (MonadIO m, MonadRandom (ExceptT ServantErr m)) => JWK -> JWSHeader -> UserId -> ExceptT ServantErr m JWT
+loginHandler jwk header uid = do
+  curTime <- liftIO getPOSIXTime
+  token <- mkToken jwk header (posixSecondsToUTCTime curTime) uid
+  case token of
+    Left _ -> throwE err500 
+    Right token -> return token
+
+
+validateJWT :: MonadRandom m => JWK -> JWT -> m Bool
+validateJWT jwk jwt = do
+--  jwk <- genJWK $ RSAGenParam 2048
+  return (validateJWSJWT def AnyValidated jwk jwt)
+
+mkToken :: MonadRandom m => JWK -> JWSHeader -> UTCTime -> UserId -> m (Either Error JWT)
+mkToken secret header curTime userId = createJWSJWT secret header claims where
+  claims = emptyClaimsSet {
+    _claimIss = Just (fromString issName),
+    _claimExp  = (Just $ NumericDate $ addUTCTime (24 * 60 * 60) curTime),
+    _unregisteredClaims = HM.fromList [(idKey, toJSON userId)]
+    }
+
+getIdFromToken :: JWT -> Result UserId 
+getIdFromToken jwt = fromJSON $ (_unregisteredClaims . jwtClaimsSet $ jwt ) HM.! idKey

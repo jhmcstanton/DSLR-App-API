@@ -1,8 +1,7 @@
 module DslrWWW.Database.Marshal (
     entryToUser,
     entryToKeyframe,
-    entryToKfList,
-    entryToLoginToken
+    entryToKfList
   )where
 
 import           DslrWWW.Database.Models
@@ -30,6 +29,3 @@ entryToKfList (KeyframeListEntry _ t_listName) kfs =
   KeyframeList { name      = id t_listName,
                  keyframes = fmap entryToKeyframe kfs
                }
-
-entryToLoginToken :: LoginTokenEntry -> LoginToken
-entryToLoginToken (LoginTokenEntry _ _ token) = LoginToken token

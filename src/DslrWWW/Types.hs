@@ -11,7 +11,6 @@ module DslrWWW.Types
     Password(..),
     UserId(..),
     KeyframeListId(..),
-    LoginToken(..)
   ) where
 
 import           Servant.Docs
@@ -78,16 +77,6 @@ newtype KeyframeListId = KeyframeListId Integer deriving (Generic)
 instance FromJSON KeyframeListId
 instance ToJSON   KeyframeListId
 
-newtype LoginToken = LoginToken ByteString deriving (Generic)
-
-instance FromJSON LoginToken where
- parseJSON (Object v) = LoginToken . T.encodeUtf8 <$> v .: "token"
- parseJSON _          = mzero
-  
-instance ToJSON   LoginToken where
-  toJSON (LoginToken token) = object ["token" .= T.decodeUtf8 token ]
--- instances for documentation
-
 instance ToSample  UserId where
   toSamples _ = singleSample (UserId 5432)
 
@@ -115,8 +104,5 @@ initFrame      = Keyframe 0 0 0 0
 
 instance ToSample KeyframeListId where
   toSamples _ = singleSample (KeyframeListId 321)
-
-instance ToSample LoginToken where
-  toSamples _ = singleSample $ LoginToken mempty
 
   

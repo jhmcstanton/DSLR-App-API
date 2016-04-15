@@ -34,9 +34,4 @@ KeyframeEntry
   t_tiltAngle Double
   t_time      Double
   deriving Show
-LoginTokenEntry
-  t_user      UserEntryId
-  UniqueUser  t_user
-  t_validUntil Int
-  t_token     ByteString
 |]
