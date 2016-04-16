@@ -43,16 +43,18 @@ main = do
                lookup "TUTORIAL_HOME" env
   runDB $ runMigration migrateAll
   -- build docs if this is on a dev machine
+  putStrLn "Ran migrations"
   dbString <- buildDBString
   if "localhost" `T.isInfixOf` (T.decodeUtf8 dbString)
      then do
+       putStrLn "Detected running in test environment, writing API documentation and JS files"
        let docsToWrite = markdown $ docs keyframeAPI
        writeFile   "API.md" docsToWrite
        writeJSForAPI apiToJS (angularServiceWith (NG.defAngularOptions { NG.serviceName = "backendService"})
                               (defCommonGeneratorOptions { moduleName = "dslr" })
                              ) "./angular-client.js"
-     else return ()
-  putStrLn "Ran migrations"
+     else putStrLn "Detected environment is production, not writing JS or API documentation"
   jwk        <- genJWK $ RSAGenParam 2048
-  let header = newJWSHeader HS256
+  let header = newJWSHeader RS512
+  putStrLn "jwk and jwsheader generated, starting server"
   run port $ serveWithContext serverAPI serverContext $ server home jwk header

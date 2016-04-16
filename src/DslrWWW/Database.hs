@@ -106,22 +106,11 @@ insertUser (User (Username name) first last (Email mail)) hashedPassword = do
   userID <- insert $ UserEntry first last name mail hashedPassword
   return userID
 
-insertUserHashPassword :: User -> Password -> IO (Key UserEntry) --IO (Key UserEntry, LoginToken)
+insertUserHashPassword :: User -> Password -> IO (Key UserEntry) 
 insertUserHashPassword user (Password pw) = do
   passwordHash <- makePassword (pwToByteString pw) hashStrength
-  runDB $ insertUser user passwordHash -- >>= (\uid -> insertLoginKey uid >>= \key -> return (uid, key))
+  runDB $ insertUser user passwordHash
 
-{-loginUser :: (Functor m, MonadIO m) => Username -> Password -> ReaderT SqlBackend m (Maybe LoginToken)
-loginUser username pw = do
-  verified <- checkPassword username pw
-  case verified of
-    Nothing  -> return Nothing
-    Just uid -> do
-      tokenEntity <- getBy (UniqueUser uid)
-      case tokenEntity of
-        Nothing -> fmap Just . insertLoginKey $ uid 
-        Just (Entity _ entry) -> return . Just . entryToLoginToken $ entry-}
-            
 checkPassword :: MonadIO m => Username -> Password -> ReaderT SqlBackend m (Maybe (Key UserEntry))
 checkPassword (Username name) (Password pwd) = do
   userEntity <- getBy (UniqueUsername name)
