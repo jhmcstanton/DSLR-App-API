@@ -1,7 +1,8 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module DslrWWW.API (
     KeyframeAPI,
     apiToJS,
@@ -19,6 +20,7 @@ import qualified DslrWWW.Database as DB
 import           DslrWWW.Database.Models
 
 import           Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as BS (pack)
 import           Servant
 import           Servant.Docs
 import           Servant.Docs.Internal
@@ -41,14 +43,21 @@ import           Data.Time.Clock.POSIX (getPOSIXTime, posixSecondsToUTCTime)
 import           Data.Aeson (toJSON, fromJSON, Result(..))
 import           Data.Default.Class
 import           Data.Foldable (fold)
+import           Data.Monoid ( (<>) )
 
 issName, idKey :: T.Text
 issName = "pbjdollys.com"
 idKey   = "userid"
 
+type TestAPI = "test" :> ReqBody '[OctetStream] TokenStream :> Get '[OctetStream] TokenStream
+
+testEndpoint :: Server TestAPI
+testEndpoint = \t -> case t of TokenStream ts -> return $ TokenStream ts
+  
+
 type KeyframeAPI = "api" :> (PublicAPI :<|> PrivateAPI)
--- this is a workaround to avoid a missing instance for JS generation in endpoints with OctetStream results
-type APIToJS    = "api" :> (PublicAPI' :<|> PrivateAPI)
+-- this is a workaround to avoid a missing instance for JS generation in endpoints with OctetStream results and inputs
+type APIToJS    = "api" :> PublicAPI' --(PublicAPI' :<|> PrivateAPI)
 
 serverContext :: Context (BasicAuthCheck UserId ': '[])
 serverContext = loginCheck :. EmptyContext
@@ -56,20 +65,20 @@ serverContext = loginCheck :. EmptyContext
 keyframeEndpoints :: JWK -> JWSHeader -> Server KeyframeAPI
 keyframeEndpoints jwk headers =
   ((uncurry addUser)
-  :<|> loginHandler jwk headers)
-  :<|> getAllKeyframes
-  :<|> getKeyframesByID 
-  :<|> postKeyframeList
+   :<|> loginHandler jwk headers)
+   :<|> (getAllKeyframes jwk)
+   :<|> getKeyframesByID 
+   :<|> postKeyframeList
 
 type PublicAPI' =
        "user" :> "new"   :> ReqBody '[JSON] (User, Password)                  :> Post '[JSON] UserId
 
 type PublicAPI =
   PublicAPI'
-  :<|> "user" :> "login" :> BasicAuth "login" UserId                          :> Get  '[OctetStream] TokenStream -- '[JSON] JWT
+  :<|> "user" :> "login" :> BasicAuth "login" UserId                          :> Get  '[OctetStream] TokenStream 
 
 type PrivateAPI =
-       "all" :> Capture "userId" Integer                                     :> Get  '[JSON] [(KeyframeListId, KeyframeList)]
+       "all"  :> ReqBody '[OctetStream] TokenStream :> Get '[JSON] [(KeyframeListId, KeyframeList)]       
   :<|> "single" :> Capture "userId" Integer :> Capture "frameListID" Integer :> Get  '[JSON] (Maybe KeyframeList)
   :<|> "new" :> Capture "userId" Integer :> ReqBody '[JSON] KeyframeList     :> Post '[JSON] (Maybe KeyframeListId)
        
@@ -93,10 +102,23 @@ apiToJS = Proxy
 
 -- functions for each endpoint
 
-getAllKeyframes :: MonadIO m  => Integer -> m [(KeyframeListId, KeyframeList)]
-getAllKeyframes uId = liftIO $ do
-  frames <- DB.runDB . DB.getAllKeyframeLists . UserEntryKey . fromIntegral $ uId
-  return . fmap (\(key, list) -> (KeyframeListId . fromIntegral . unSqlBackendKey . unKeyframeListEntryKey $ key, list)) $ frames
+getAllKeyframes :: JWK -> TokenStream -> ExceptT ServantErr IO [(KeyframeListId, KeyframeList)]
+getAllKeyframes jwk  (TokenStream token) = do
+  let jwtE = decodeCompact token
+  case jwtE of
+    Left e -> throwE (err501 { errBody = "Error uncompacting jwt: " <> BS.pack (show e) })
+    Right jwt -> do
+      validated <- liftIO $ validateJWT jwk jwt
+      if validated 
+         then do
+           let claimHM = _unregisteredClaims. jwtClaimsSet $ jwt
+           case HM.lookup idKey claimHM of
+             Nothing -> throwE (err501 { errBody = "JWT Claimsset missing userid field" })
+             Just jsonUID -> do
+               let uId = undefined jsonUID
+               frames <- liftIO $ DB.runDB . DB.getAllKeyframeLists . UserEntryKey . fromIntegral $ uId
+               return . fmap (\(key, list) -> (KeyframeListId . fromIntegral . unSqlBackendKey . unKeyframeListEntryKey $ key, list)) $ frames
+         else throwE (err501 { errBody = "Invalid JWT" })
 
 getKeyframesByID :: MonadIO m => Integer -> Integer -> m (Maybe KeyframeList)
 getKeyframesByID uId kId = liftIO $ do
@@ -126,7 +148,7 @@ loginCheck = BasicAuthCheck check where
       Nothing    -> return Unauthorized
       (Just uid) -> return . Authorized . UserId . fromIntegral . unSqlBackendKey . unUserEntryKey $ uid
 
-loginHandler :: (MonadIO m) => JWK -> JWSHeader -> UserId -> ExceptT ServantErr m TokenStream -- JWT
+loginHandler :: (MonadIO m) => JWK -> JWSHeader -> UserId -> ExceptT ServantErr m TokenStream
 loginHandler jwk header uid = do
   curTime <- liftIO getPOSIXTime
   token <- mkToken jwk header (posixSecondsToUTCTime curTime) uid
