@@ -1,6 +1,5 @@
 adjunctions-4.3
 aeson-0.11.0.0
-aeson-compat-0.3.1.0
 aeson-compat-0.3.2.0
 aeson-pretty-0.7.2
 ansi-terminal-0.6.2.3
@@ -27,7 +26,6 @@ charset-0.3.7.1
 cmdargs-0.10.14
 comonad-5
 conduit-1.2.6.4
-conduit-extra-1.1.11
 conduit-extra-1.1.13.1
 contravariant-1.4
 control-monad-omega-0.3.1
@@ -49,7 +47,6 @@ easy-file-0.2.1
 esqueleto-2.4.3
 exceptions-0.8.2.1
 fail-4.9.0.0
-fast-logger-2.4.1
 fast-logger-2.4.2
 file-embed-0.0.9.1
 free-4.12.4
@@ -105,12 +102,9 @@ semigroupoids-5.0.1
 semigroups-0.18.1
 servant-0.5
 servant-0.6
-servant-docs-0.5
 servant-docs-0.6
-servant-foreign-0.5
 servant-foreign-0.6
 servant-js-0.6
-servant-server-0.5
 servant-server-0.6
 silently-1.2.5
 simple-sendfile-0.2.21
@@ -141,9 +135,7 @@ uuid-types-1.0.3
 vault-0.3.0.6
 vector-0.11.0.0
 void-0.7.1
-wai-3.2.0
 wai-3.2.0.1
-wai-app-static-3.1.4.1
 wai-app-static-3.1.5
 wai-extra-3.0.14.3
 wai-extra-3.0.15
