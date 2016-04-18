@@ -1,4 +1,4 @@
-## GET /api/all/:userId
+## GET /api/all
 
 #### Authentication
 
@@ -6,10 +6,6 @@
 
 Clients must supply the following data
 
-
-#### Captures:
-
-- *userId*: (integer) user id in database
 
 #### Response:
 
@@ -50,7 +46,7 @@ Clients must supply the following data
 [[321,{"keyframes":[],"name":null}],[321,{"keyframes":[],"name":null}],[321,{"keyframes":[],"name":null}]]
 ```
 
-## POST /api/new/:userId
+## POST /api/new
 
 #### Authentication
 
@@ -58,10 +54,6 @@ Clients must supply the following data
 
 Clients must supply the following data
 
-
-#### Captures:
-
-- *userId*: (integer) user id in database
 
 #### Request:
 
@@ -96,7 +88,7 @@ null
 321
 ```
 
-## GET /api/single/:userId/:frameListID
+## GET /api/single/:frameListID
 
 #### Authentication
 
@@ -107,7 +99,6 @@ Clients must supply the following data
 
 #### Captures:
 
-- *userId*: (integer) user id in database
 - *frameListID*: (integer) keyframe list id in database
 
 #### Response:

@@ -35,5 +35,7 @@ executable dslr-www
                       time,
                       jose,
                       unordered-containers,
-                      data-default-class
+                      data-default-class,
+                      wai,
+                      lens
   hs-source-dirs:     src
