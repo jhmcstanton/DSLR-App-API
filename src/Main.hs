@@ -54,7 +54,7 @@ main = do
                               (defCommonGeneratorOptions { moduleName = "dslr" })
                              ) "./angular-client.js"
      else putStrLn "Detected environment is production, not writing JS or API documentation"
-  jwk        <- genJWK $ RSAGenParam 2048
+  jwk        <- genJWK $ RSAGenParam 1024
   let header = newJWSHeader RS512
   putStrLn "jwk and jwsheader generated, starting server"
   run port $ serveWithContext serverAPI serverContext $ server home jwk header
