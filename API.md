@@ -7,6 +7,9 @@
 Clients must supply the following data
 
 
+
+- This endpoint is sensitive to the value of the **token-auth** HTTP header.
+
 #### Response:
 
 - Status code 200
@@ -55,6 +58,9 @@ Clients must supply the following data
 Clients must supply the following data
 
 
+
+- This endpoint is sensitive to the value of the **token-auth** HTTP header.
+
 #### Request:
 
 - Supported content types are:
@@ -100,6 +106,9 @@ Clients must supply the following data
 #### Captures:
 
 - *frameListID*: (integer) keyframe list id in database
+
+
+- This endpoint is sensitive to the value of the **token-auth** HTTP header.
 
 #### Response:
 

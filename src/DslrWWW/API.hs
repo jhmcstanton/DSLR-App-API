@@ -6,7 +6,6 @@
 module DslrWWW.API (
     KeyframeAPI,
     apiToJS,
-    apiToDocs,
     keyframeAPI,
     keyframeEndpoints,
     serverContext,
@@ -56,18 +55,17 @@ idKey   = "userid"
 type KeyframeAPI = "api" :> (PublicAPI :<|> PrivateAPI)
 -- this is a workaround to avoid a missing instance for JS generation in endpoints with OctetStream results and inputs
 type APIToJS    = "api" :> PublicAPI' --(PublicAPI' :<|> PrivateAPI)
-type APIToDocs  = "api" :> (PublicAPI :<|> PrivateAPIForDocs)
 
-serverContext :: JWK -> Context (BasicAuthCheck UserId ': AuthHandler Request UserId ': '[])
-serverContext jwk = loginCheck :. tokenAuth jwk :. EmptyContext
+serverContext :: Context (BasicAuthCheck UserId ': '[])
+serverContext = loginCheck :. EmptyContext
 
 keyframeEndpoints :: JWK -> JWSHeader -> Server KeyframeAPI
 keyframeEndpoints jwk headers =
   ((uncurry addUser)
    :<|> loginHandler jwk headers)
-   :<|> getAllKeyframes
-   :<|> getKeyframesByID 
-   :<|> postKeyframeList
+   :<|> getAllKeyframes jwk 
+   :<|> getKeyframesByID jwk 
+   :<|> postKeyframeList jwk
 
 type PublicAPI' =
        "user" :> "new"   :> ReqBody '[JSON] (User, Password)                  :> Post '[JSON] UserId
@@ -76,20 +74,12 @@ type PublicAPI =
   PublicAPI'
   :<|> "user" :> "login" :> BasicAuth "login" UserId                          :> Get  '[OctetStream] TokenStream 
 
-type TokenAuth = AuthProtect "token-auth"
-
--- these are added ONLY so that PrivateAPI and PrivateAPIForDocs are basically the same :/
-type GetAll     = "all"                                     :> Get '[JSON] [(KeyframeListId, KeyframeList)]
-type GetSingle  = "single" :> Capture "frameListID" Integer :> Get  '[JSON] (Maybe KeyframeList)
-type AddKF      = "new"    :> ReqBody '[JSON] KeyframeList  :> Post '[JSON] (Maybe KeyframeListId)
-
--- this is ONLY here since Generalized Authenticaion breaks documentation generation
-type PrivateAPIForDocs = GetAll :<|> GetSingle :<|> AddKF
+type TokenAuth = Header "token-auth" TokenStream --AuthProtect "token-auth"
 
 type PrivateAPI = 
-       TokenAuth :> GetAll
-  :<|> TokenAuth :> GetSingle
-  :<|> TokenAuth :> AddKF
+       TokenAuth :> "all"                                     :> Get '[JSON] [(KeyframeListId, KeyframeList)]
+  :<|> TokenAuth :> "single" :> Capture "frameListID" Integer :> Get  '[JSON] (Maybe KeyframeList)
+  :<|> TokenAuth :> "new"    :> ReqBody '[JSON] KeyframeList  :> Post '[JSON] (Maybe KeyframeListId)
 
 type instance AuthServerData (AuthProtect "token-auth") = UserId       
        
@@ -102,27 +92,20 @@ instance ToCapture (Capture "userId" Integer) where
 instance ToCapture (Capture "frameListID" Integer) where
   toCapture _  = DocCapture "frameListID" "(integer) keyframe list id in database"
 
+instance ToCapture (Header "token-auth" TokenStream) where
+  toCapture _  = DocCapture "JWT Authentication" "JWT provided by /api/user/login endpoint"
+
 instance ToAuthInfo (BasicAuth "login" UserId) where
   toAuthInfo _ = DocAuthentication "HTTP BasicAuthentication" "BasicAuthentication: username:password"
 
-instance ToAuthInfo TokenAuth where
-  toAuthInfo _ = DocAuthentication "JWT Authentication" "JWT provided by /api/user/login endpoint"
-
-instance (ToAuthInfo (AuthProtect realm), HasDocs sublayout) => HasDocs (AuthProtect realm :> sublayout) where
-  docsFor Proxy (endpoint, action) =
-    docsFor (Proxy :: Proxy sublayout) (endpoint, action')
-      where
-        authProxy = Proxy :: Proxy (AuthProtect realm)
-        action' = over authInfo (|> toAuthInfo authProxy) action
+--instance ToAuthInfo TokenAuth where
+  --toAuthInfo _ = DocAuthentication "JWT Authentication" "JWT provided by /api/user/login endpoint"
 
 keyframeAPI :: Proxy KeyframeAPI
 keyframeAPI = Proxy
 
 apiToJS :: Proxy APIToJS
 apiToJS = Proxy
-
-apiToDocs :: Proxy APIToDocs
-apiToDocs = Proxy
 
 -- functions for each endpoint
 
@@ -134,42 +117,50 @@ loginCheck = BasicAuthCheck check where
       Nothing    -> return Unauthorized
       (Just uid) -> return . Authorized . UserId . fromIntegral . unSqlBackendKey . unUserEntryKey $ uid
 
-tokenAuth :: JWK -> AuthHandler Request UserId
-tokenAuth jwk = mkAuthHandler handler where
-  handler req = do
-    case lookup "dslr-auth-cookie" (requestHeaders req) of
-      Nothing -> throwE (err403 { errBody = "Error in request, unable to find auth cookie" })
-      Just token -> do        
-        let jwtE = decodeCompact $ fromStrict token
-        case jwtE of
-          Left e -> throwE (err501 { errBody = "Error uncompacting jwt: " <> BS.pack (show e) })
-          Right jwt -> do
-            validated <- liftIO $ validateJWT jwk jwt
-            if validated 
-               then do
-                 let claimHM = _unregisteredClaims. jwtClaimsSet $ jwt
-                 case HM.lookup idKey claimHM of
-                   Nothing -> throwE (err403 { errBody = "JWT Claimsset missing userid field" })
-                   Just jsonUID -> case fromJSON jsonUID of
-                     Error e     -> throwE (err403 { errBody = "Invalid JWT, unable to decode userid, error: " <> BS.pack (show e) })
-                     Success uid -> return uid
-               else throwE (err501 { errBody = "Invalid JWT" })
+tokenAuth :: MonadIO m => JWK -> TokenStream -> ExceptT ServantErr m UserId
+tokenAuth jwk (TokenStream token) = do --mkAuthHandler handler where
+--  case lookup "dslr-auth-cookie" (requestHeaders req) of
+  --  Nothing -> throwE (err403 { errBody = "Error in request, unable to find auth cookie" })
+    --Just token -> do        
+  let jwtE = decodeCompact token  --  $ fromStrict token
+  case jwtE of
+    Left e -> throwE (err501 { errBody = "Error uncompacting jwt: " <> BS.pack (show e) })
+    Right jwt -> do
+      validated <- liftIO $ validateJWT jwk jwt
+      if validated 
+         then do
+           let claimHM = _unregisteredClaims. jwtClaimsSet $ jwt
+           case HM.lookup idKey claimHM of
+             Nothing -> throwE (err403 { errBody = "JWT Claimsset missing userid field" })
+             Just jsonUID -> case fromJSON jsonUID of
+               Error e     -> throwE (err403 { errBody = "Invalid JWT, unable to decode userid, error: " <> BS.pack (show e) })
+               Success uid -> return uid
+         else throwE (err501 { errBody = "Invalid JWT" })
 
-getAllKeyframes :: UserId -> ExceptT ServantErr IO [(KeyframeListId, KeyframeList)]
-getAllKeyframes (UserId uId) = do
+missingToken :: MonadIO m => ExceptT ServantErr m a
+missingToken = throwE (err403 { errBody = "JWT Missing" })
+
+getAllKeyframes :: JWK -> Maybe TokenStream -> ExceptT ServantErr IO [(KeyframeListId, KeyframeList)]
+getAllKeyframes _ Nothing          = missingToken
+getAllKeyframes jwk (Just tstream) = do
+  (UserId uId) <- tokenAuth jwk tstream
   frames <- liftIO $ DB.runDB . DB.getAllKeyframeLists . UserEntryKey . fromIntegral $ uId
   return . fmap (\(key, list) -> (KeyframeListId . fromIntegral . unSqlBackendKey . unKeyframeListEntryKey $ key, list)) $ frames
 
-getKeyframesByID :: MonadIO m => UserId -> Integer -> m (Maybe KeyframeList)
-getKeyframesByID (UserId uId) kId = liftIO $ do
+getKeyframesByID :: MonadIO m => JWK -> Maybe TokenStream -> Integer -> ExceptT ServantErr m (Maybe KeyframeList)
+getKeyframesById _   Nothing        _   = missingToken
+getKeyframesByID jwk (Just tstream) kId = do
+  (UserId uId) <- tokenAuth jwk tstream
   let userKey   = UserEntryKey $ fromIntegral uId
   let kfListKey = KeyframeListEntryKey $ fromIntegral kId
-  DB.runDB $ DB.getSingleKeyframeList userKey kfListKey
+  liftIO $ DB.runDB $ DB.getSingleKeyframeList userKey kfListKey
 
-postKeyframeList :: MonadIO m => UserId -> KeyframeList -> m (Maybe KeyframeListId)
-postKeyframeList (UserId uId) kfList = liftIO $ do
+postKeyframeList :: MonadIO m => JWK -> Maybe TokenStream -> KeyframeList -> ExceptT ServantErr m (Maybe KeyframeListId)
+postKeyframeList _   Nothing _             = missingToken
+postKeyframeList jwk (Just tstream) kfList = do
+  (UserId uId) <- tokenAuth jwk tstream
   let userKey = UserEntryKey $ fromIntegral uId
-  kfKey <- DB.runDB $ DB.insertKeyframeList userKey kfList
+  kfKey <- liftIO $ DB.runDB $ DB.insertKeyframeList userKey kfList
   return $ fmap (KeyframeListId . fromIntegral . unSqlBackendKey . unKeyframeListEntryKey) kfKey
 
 -- need to check how this could fail

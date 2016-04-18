@@ -14,13 +14,14 @@ module DslrWWW.Types
     TokenStream(..)
   ) where
 
+import           Servant
 import           Servant.Docs
 import           Servant.API.ContentTypes
 import           GHC.Generics
 import           Data.Aeson
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import           Data.ByteString.Lazy (ByteString)
+import           Data.ByteString.Lazy (ByteString, fromStrict)
 import qualified Data.ByteString.Lazy.Char8 as BS (pack) 
 import           Data.Monoid
 import           Control.Applicative
@@ -87,6 +88,9 @@ instance MimeRender OctetStream TokenStream where
 
 instance MimeUnrender OctetStream TokenStream where
   mimeUnrender p bs = fmap TokenStream $ mimeUnrender p bs
+
+instance FromHttpApiData TokenStream where
+  parseHeader = return . TokenStream . fromStrict
 
 
 instance ToSample  UserId where

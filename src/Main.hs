@@ -48,7 +48,7 @@ main = do
   if "localhost" `T.isInfixOf` (T.decodeUtf8 dbString)
      then do
        putStrLn "Detected running in test environment, writing API documentation and JS files"
-       let docsToWrite = markdown $ docs apiToDocs
+       let docsToWrite = markdown $ docs keyframeAPI
        writeFile   "API.md" docsToWrite
        writeJSForAPI apiToJS (angularServiceWith (NG.defAngularOptions { NG.serviceName = "backendService"})
                               (defCommonGeneratorOptions { moduleName = "dslr" })
@@ -57,4 +57,4 @@ main = do
   jwk        <- genJWK $ RSAGenParam 2048
   let header = newJWSHeader RS512
   putStrLn "jwk and jwsheader generated, starting server"
-  run port $ serveWithContext serverAPI (serverContext jwk) $ server home jwk header
+  run port $ serveWithContext serverAPI serverContext $ server home jwk header
