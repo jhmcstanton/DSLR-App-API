@@ -100,7 +100,6 @@ safe-0.3.9
 scientific-0.3.4.6
 semigroupoids-5.0.1
 semigroups-0.18.1
-servant-0.5
 servant-0.6
 servant-docs-0.6
 servant-foreign-0.6
@@ -130,14 +129,12 @@ unix-compat-0.4.1.4
 unix-time-0.3.6
 unordered-containers-0.2.7.0
 utf8-string-1.0.1.1
-uuid-types-1.0.2
 uuid-types-1.0.3
 vault-0.3.0.6
 vector-0.11.0.0
 void-0.7.1
 wai-3.2.0.1
 wai-app-static-3.1.5
-wai-extra-3.0.14.3
 wai-extra-3.0.15
 wai-logger-2.2.5
 warp-3.2.3
