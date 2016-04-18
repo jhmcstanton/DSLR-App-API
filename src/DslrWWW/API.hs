@@ -54,7 +54,7 @@ idKey   = "userid"
 
 type KeyframeAPI = "api" :> (PublicAPI :<|> PrivateAPI)
 -- this is a workaround to avoid a missing instance for JS generation in endpoints with OctetStream results and inputs
-type APIToJS    = "api" :> PublicAPI' --(PublicAPI' :<|> PrivateAPI)
+type APIToJS    = "api" :> (PublicAPI' :<|> PrivateAPI)
 
 serverContext :: Context (BasicAuthCheck UserId ': '[])
 serverContext = loginCheck :. EmptyContext
