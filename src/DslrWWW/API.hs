@@ -177,9 +177,9 @@ loginHandler jwk header uid = do
   case token of
     Left _      -> throwE err500 
     Right token -> 
-      case toCompact token of
+      case encodeCompact token of
         Left _             -> throwE err500
-        Right compactToken -> return . TokenStream . fold $ compactToken
+        Right compactToken -> return . TokenStream $ compactToken
 
 validateJWT :: MonadRandom m => JWK -> JWT -> m Bool
 validateJWT jwk jwt = do
