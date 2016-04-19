@@ -54,30 +54,27 @@ idKey   = "userid"
 
 type KeyframeAPI = "api" :> (PublicAPI :<|> PrivateAPI)
 -- this is a workaround to avoid a missing instance for JS generation in endpoints with OctetStream results and inputs
-type APIToJS    = "api" :> (PublicAPI' :<|> PrivateAPI)
+type APIToJS    = "api" :> PrivateAPI
 
 serverContext :: Context (BasicAuthCheck UserId ': '[])
 serverContext = loginCheck :. EmptyContext
 
 keyframeEndpoints :: JWK -> JWSHeader -> Server KeyframeAPI
 keyframeEndpoints jwk headers =
-  ((uncurry addUser)
+  ((uncurry $ addUser jwk headers)
    :<|> loginHandler jwk headers)
    :<|> getAllKeyframes jwk 
    :<|> getKeyframesByID jwk 
    :<|> postKeyframeList jwk
 
-type PublicAPI' =
-       "user" :> "new"   :> ReqBody '[JSON] (User, Password)                  :> Post '[JSON] UserId
-
 type PublicAPI =
-  PublicAPI'
-  :<|> "user" :> "login" :> BasicAuth "login" UserId                          :> Get  '[OctetStream] TokenStream 
+       "user" :> "new"   :> ReqBody '[JSON] (User, Password)  :> Post '[OctetStream] TokenStream
+  :<|> "user" :> "login" :> BasicAuth "login" UserId          :> Get  '[OctetStream] TokenStream 
 
 type TokenAuth = Header "token-auth" TokenStream --AuthProtect "token-auth"
 
 type PrivateAPI = 
-       TokenAuth :> "all"                                     :> Get '[JSON] [(KeyframeListId, KeyframeList)]
+       TokenAuth :> "all"                                     :> Get  '[JSON] [(KeyframeListId, KeyframeList)]
   :<|> TokenAuth :> "single" :> Capture "frameListID" Integer :> Get  '[JSON] (Maybe KeyframeList)
   :<|> TokenAuth :> "new"    :> ReqBody '[JSON] KeyframeList  :> Post '[JSON] (Maybe KeyframeListId)
 
@@ -164,11 +161,18 @@ postKeyframeList jwk (Just tstream) kfList = do
   return $ fmap (KeyframeListId . fromIntegral . unSqlBackendKey . unKeyframeListEntryKey) kfKey
 
 -- need to check how this could fail
-addUser :: MonadIO m => User -> Password -> m UserId
-addUser user pw = do
+addUser :: MonadIO m => JWK -> JWSHeader -> User -> Password -> ExceptT ServantErr m TokenStream
+addUser jwk header user pw = do
   userKey <- liftIO $ DB.insertUserHashPassword user pw 
   let userId = UserId . fromIntegral . unSqlBackendKey . unUserEntryKey $ userKey
-  return userId
+  curTime <- liftIO getPOSIXTime
+  token <- mkToken jwk header (posixSecondsToUTCTime curTime) userId
+  case token of
+    Left _ -> throwE err500
+    Right token -> 
+      case encodeCompact token of
+        Left _             -> throwE err500
+        Right compactToken -> return . TokenStream $ compactToken
 
 loginHandler :: (MonadIO m) => JWK -> JWSHeader -> UserId -> ExceptT ServantErr m TokenStream
 loginHandler jwk header uid = do

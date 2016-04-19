@@ -30,5 +30,5 @@ listens to, and, finally, the name of the Postgres database in the cluster.
 The current URL for the dev shard on Heroku is [https://ancient-falls-78055.herokuapp.com](https://ancient-falls-78055.herokuapp.com).
 
 API documentation can be found in the [API documentation generate by Servant](API.md).
-Note that the `login` endpoint is missing due to limitations in the `servant-js` package so it is not
+Note that the `login` and `newuser` endpoints are missing due to limitations in the `servant-js` package so it is not
 automatically derived.

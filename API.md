@@ -197,11 +197,11 @@ Clients must supply the following data
 
 - Supported content types are:
 
-    - `application/json`
+    - `application/octet-stream`
 
 - Response body as below.
 
-```javascript
-5432
+```
+JWT
 ```
 
